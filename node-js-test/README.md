@@ -14,6 +14,7 @@ Além do CRUD de peças em si, esta implementação modela autenticação e mult
 - **PostgreSQL + Prisma** — [ADR 0003](docs/adr/0003-postgresql-and-prisma-orm.md)
 - **JWT + guards de role** para autenticação/autorização — [ADR 0006](docs/adr/0006-jwt-authentication-and-role-guards.md)
 - **Redis**, via um `CacheAdapter` genérico, para cachear `GET /restock/priorities` por empresa — [ADR 0011](docs/adr/0011-generic-cache-adapter-for-restock-priorities.md)
+- **Paginação** em `/parts`, `/users` e `/restock/priorities` — [ADR 0012](docs/adr/0012-pagination-for-list-endpoints.md)
 - **Jest** para testes unitários e e2e — [ADR 0010](docs/adr/0010-testing-strategy.md)
 
 ## Arquitetura
@@ -63,16 +64,18 @@ Todos os endpoints (exceto `/auth/*`) exigem `Authorization: Bearer <accessToken
 | PUT    | `/companies/:id`       | ADMIN   | Atualiza a própria empresa |
 | DELETE | `/companies/:id`       | ADMIN   | Remove (soft delete) a própria empresa |
 | POST   | `/users`               | ADMIN   | Cria um usuário na própria empresa |
-| GET    | `/users`               | ADMIN/USER | Lista os usuários da própria empresa |
+| GET    | `/users?page=&limit=`  | ADMIN/USER | Lista paginada dos usuários da própria empresa |
 | GET    | `/users/:id`           | ADMIN/USER | Detalhe de um usuário da própria empresa |
 | PUT    | `/users/:id`           | ADMIN   | Atualiza um usuário da própria empresa |
 | DELETE | `/users/:id`           | ADMIN   | Remove um usuário da própria empresa |
 | POST   | `/parts`               | ADMIN   | Cria uma peça |
-| GET    | `/parts?category=`     | ADMIN/USER | Lista peças da própria empresa (filtro opcional por categoria) |
+| GET    | `/parts?category=&page=&limit=` | ADMIN/USER | Lista paginada de peças da própria empresa (filtro opcional por categoria) |
 | GET    | `/parts/:id`           | ADMIN/USER | Detalhe de uma peça |
 | PUT    | `/parts/:id`           | ADMIN   | Atualiza uma peça |
 | DELETE | `/parts/:id`           | ADMIN   | Remove (soft delete) uma peça |
-| **GET**| **`/restock/priorities`** | ADMIN/USER | **Peças que precisam de reposição, ordenadas por urgência** |
+| **GET**| **`/restock/priorities?page=&limit=`** | ADMIN/USER | **Peças que precisam de reposição, ordenadas por urgência, paginado** |
+
+`page` (padrão `1`, mínimo `1`) e `limit` (padrão `20`, máximo `100`) são opcionais nos três endpoints paginados; valores fora do intervalo retornam `400`. Cada resposta paginada traz `total`/`page`/`limit`/`totalPages` junto com os dados (`data` em `/parts` e `/users`, `priorities` em `/restock/priorities`, mantendo o nome do campo do enunciado do desafio) — o racional de por que `/restock/priorities` pagina em memória sobre a lista já ordenada, e `/parts`/`/users` paginam no banco, está na [ADR 0012](docs/adr/0012-pagination-for-list-endpoints.md).
 
 > A porta padrão é `3000` (`PORT` no `.env`). A versão em Golang do mesmo desafio expõe exatamente os mesmos endpoints, em outra porta.
 
@@ -115,11 +118,12 @@ curl -X POST http://localhost:3000/parts \
     "criticalityLevel": 3
   }'
 
-# 4. Ver as prioridades de reposição
-curl http://localhost:3000/restock/priorities \
+# 4. Ver as prioridades de reposição (paginado)
+curl "http://localhost:3000/restock/priorities?page=1&limit=20" \
   -H "Authorization: Bearer $TOKEN"
 # => {"priorities": [{"partId": "...", "name": "Filtro de Oleo X", "currentStock": 15,
-#      "projectedStock": -5, "minimumStock": 20, "urgencyScore": 75}]}
+#      "projectedStock": -5, "minimumStock": 20, "urgencyScore": 75}],
+#     "total": 1, "page": 1, "limit": 20, "totalPages": 1}
 ```
 
 ## Testes

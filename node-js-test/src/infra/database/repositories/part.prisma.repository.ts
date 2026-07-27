@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Part } from '@prisma/client';
 import { PartEntity } from 'src/domain/entities/part.entity';
 import { PartRepository } from 'src/domain/repositories/part.repository';
+import {
+  IPaginatedResult,
+  IPaginationParams,
+} from 'src/shared/interfaces/pagination.interface';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -78,6 +82,36 @@ export class PartPrismaRepository extends PartRepository {
       where: { companyId, deletedAt: null, ...(category ? { category } : {}) },
     });
     return parts.map((part) => this.toDomain(part));
+  }
+
+  async findPageByCompanyId(
+    companyId: string,
+    pagination: IPaginationParams,
+    category?: string,
+  ): Promise<IPaginatedResult<PartEntity>> {
+    const where = {
+      companyId,
+      deletedAt: null,
+      ...(category ? { category } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.part.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (pagination.page - 1) * pagination.limit,
+        take: pagination.limit,
+      }),
+      this.prisma.part.count({ where }),
+    ]);
+
+    return {
+      data: rows.map((part) => this.toDomain(part)),
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+    };
   }
 
   async findByIdAndCompanyId(

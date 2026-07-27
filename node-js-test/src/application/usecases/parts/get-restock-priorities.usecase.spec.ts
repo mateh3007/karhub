@@ -43,7 +43,7 @@ describe('GetRestockPrioritiesUseCase', () => {
   it('fetches all parts for the company, without a category filter', async () => {
     partRepository.findByCompanyId.mockResolvedValue([]);
 
-    await useCase.execute({ companyId: 'company-1' });
+    await useCase.execute({ companyId: 'company-1', page: 1, limit: 20 });
 
     expect(partRepository.findByCompanyId).toHaveBeenCalledWith('company-1');
   });
@@ -72,29 +72,39 @@ describe('GetRestockPrioritiesUseCase', () => {
       urgent,
     ]);
 
-    const result = await useCase.execute({ companyId: 'company-1' });
+    const result = await useCase.execute({
+      companyId: 'company-1',
+      page: 1,
+      limit: 20,
+    });
 
-    expect(result.map((part) => part.name)).toEqual(['Urgent', 'Mild']);
+    expect(result.data.map((part) => part.name)).toEqual(['Urgent', 'Mild']);
+    expect(result.total).toBe(2);
+    expect(result.totalPages).toBe(1);
   });
 
   it('reads from the cache using the company-scoped key and skips the repository on a hit', async () => {
     const cachedPart = makePart({ name: 'Cached' });
     cacheAdapter.get.mockResolvedValue([cachedPart.toJSON()]);
 
-    const result = await useCase.execute({ companyId: 'company-1' });
+    const result = await useCase.execute({
+      companyId: 'company-1',
+      page: 1,
+      limit: 20,
+    });
 
     expect(cacheAdapter.get).toHaveBeenCalledWith(
       PartPriorityService.cacheKeyFor('company-1'),
     );
     expect(partRepository.findByCompanyId).not.toHaveBeenCalled();
     expect(cacheAdapter.set).not.toHaveBeenCalled();
-    expect(result).toHaveLength(1);
-    expect(result[0]).toBeInstanceOf(PartEntity);
-    expect(result[0].name).toBe('Cached');
-    expect(result[0].urgencyScore()).toBe(cachedPart.urgencyScore());
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toBeInstanceOf(PartEntity);
+    expect(result.data[0].name).toBe('Cached');
+    expect(result.data[0].urgencyScore()).toBe(cachedPart.urgencyScore());
   });
 
-  it('stores the computed result in the cache under the company-scoped key on a miss', async () => {
+  it('stores the full computed result in the cache under the company-scoped key on a miss', async () => {
     const urgent = makePart({
       name: 'Urgent',
       currentStock: -5,
@@ -102,12 +112,57 @@ describe('GetRestockPrioritiesUseCase', () => {
     });
     partRepository.findByCompanyId.mockResolvedValue([urgent]);
 
-    const result = await useCase.execute({ companyId: 'company-1' });
+    await useCase.execute({ companyId: 'company-1', page: 1, limit: 20 });
 
     expect(cacheAdapter.set).toHaveBeenCalledWith(
       PartPriorityService.cacheKeyFor('company-1'),
-      result,
+      [urgent],
       expect.any(Number),
     );
+  });
+
+  it('paginates the sorted result without truncating the reported total', async () => {
+    const first = makePart({
+      name: 'A',
+      currentStock: -5,
+      criticalityLevel: 5,
+    });
+    const second = makePart({
+      name: 'B',
+      currentStock: -4,
+      criticalityLevel: 4,
+    });
+    const third = makePart({
+      name: 'C',
+      currentStock: -3,
+      criticalityLevel: 3,
+    });
+    partRepository.findByCompanyId.mockResolvedValue([first, second, third]);
+
+    const result = await useCase.execute({
+      companyId: 'company-1',
+      page: 2,
+      limit: 1,
+    });
+
+    expect(result.data.map((part) => part.name)).toEqual(['B']);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(2);
+    expect(result.limit).toBe(1);
+    expect(result.totalPages).toBe(3);
+  });
+
+  it('returns an empty page past the last page without erroring', async () => {
+    const urgent = makePart({ name: 'Urgent', currentStock: -5 });
+    partRepository.findByCompanyId.mockResolvedValue([urgent]);
+
+    const result = await useCase.execute({
+      companyId: 'company-1',
+      page: 5,
+      limit: 20,
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(1);
   });
 });

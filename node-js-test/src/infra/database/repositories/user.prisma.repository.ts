@@ -3,6 +3,10 @@ import { User } from '@prisma/client';
 import { RoleEnum } from 'src/domain/enums/role.enum';
 import { UserEntity } from 'src/domain/entities/user.entity';
 import { UserRepository } from 'src/domain/repositories/user.repository';
+import {
+  IPaginatedResult,
+  IPaginationParams,
+} from 'src/shared/interfaces/pagination.interface';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -70,11 +74,29 @@ export class UserPrismaRepository extends UserRepository {
     return user ? this.toDomain(user) : null;
   }
 
-  async findByCompanyId(companyId: string): Promise<UserEntity[]> {
-    const users = await this.prisma.user.findMany({
-      where: { companyId, deletedAt: null },
-    });
-    return users.map((user) => this.toDomain(user));
+  async findPageByCompanyId(
+    companyId: string,
+    pagination: IPaginationParams,
+  ): Promise<IPaginatedResult<UserEntity>> {
+    const where = { companyId, deletedAt: null };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (pagination.page - 1) * pagination.limit,
+        take: pagination.limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: rows.map((user) => this.toDomain(user)),
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+    };
   }
 
   async findByIdAndCompanyId(

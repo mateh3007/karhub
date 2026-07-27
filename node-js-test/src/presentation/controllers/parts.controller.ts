@@ -31,6 +31,7 @@ import { RolesGuard } from 'src/infra/guards/roles.guard';
 import { CreatePartDto } from 'src/presentation/dtos/parts/create-part.dto';
 import { FindPartsQueryDto } from 'src/presentation/dtos/parts/find-parts-query.dto';
 import { PartResponseDto } from 'src/presentation/dtos/parts/part-response.dto';
+import { PartsPageResponseDto } from 'src/presentation/dtos/parts/parts-page-response.dto';
 import { UpdatePartDto } from 'src/presentation/dtos/parts/update-part.dto';
 import type { AuthenticatedRequest } from 'src/shared/interfaces/authenticated-request.interface';
 
@@ -64,17 +65,21 @@ export class PartsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List parts, optionally filtered by category' })
-  @ApiResponse({ status: HttpStatus.OK, type: [PartResponseDto] })
+  @ApiOperation({
+    summary: 'List parts, paginated and optionally filtered by category',
+  })
+  @ApiResponse({ status: HttpStatus.OK, type: PartsPageResponseDto })
   async findAll(
     @Query() query: FindPartsQueryDto,
     @Req() request: AuthenticatedRequest,
-  ): Promise<PartResponseDto[]> {
-    const parts = await this.getAllPartsUseCase.execute({
+  ): Promise<PartsPageResponseDto> {
+    const result = await this.getAllPartsUseCase.execute({
       companyId: request.user.companyId,
       category: query.category,
+      page: query.page,
+      limit: query.limit,
     });
-    return parts.map((part) => PartResponseDto.fromEntity(part));
+    return PartsPageResponseDto.fromPaginatedResult(result);
   }
 
   @Get(':id')

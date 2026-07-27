@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -28,8 +29,10 @@ import { Roles } from 'src/infra/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/infra/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/infra/guards/roles.guard';
 import { CreateUserDto } from 'src/presentation/dtos/users/create-user.dto';
+import { FindUsersQueryDto } from 'src/presentation/dtos/users/find-users-query.dto';
 import { UpdateUserDto } from 'src/presentation/dtos/users/update-user.dto';
 import { UserResponseDto } from 'src/presentation/dtos/users/user-response.dto';
+import { UsersPageResponseDto } from 'src/presentation/dtos/users/users-page-response.dto';
 import type { AuthenticatedRequest } from 'src/shared/interfaces/authenticated-request.interface';
 
 @ApiTags('users')
@@ -62,15 +65,18 @@ export class UsersController {
   }
 
   @Get()
-  @ApiOperation({ summary: "List the caller's company users" })
-  @ApiResponse({ status: HttpStatus.OK, type: [UserResponseDto] })
+  @ApiOperation({ summary: "List the caller's company users, paginated" })
+  @ApiResponse({ status: HttpStatus.OK, type: UsersPageResponseDto })
   async findAll(
+    @Query() query: FindUsersQueryDto,
     @Req() request: AuthenticatedRequest,
-  ): Promise<UserResponseDto[]> {
-    const users = await this.getAllUsersUseCase.execute({
+  ): Promise<UsersPageResponseDto> {
+    const result = await this.getAllUsersUseCase.execute({
       companyId: request.user.companyId,
+      page: query.page,
+      limit: query.limit,
     });
-    return users.map((user) => UserResponseDto.fromEntity(user));
+    return UsersPageResponseDto.fromPaginatedResult(result);
   }
 
   @Get(':id')

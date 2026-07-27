@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PartEntity } from 'src/domain/entities/part.entity';
 import { IPaginatedResult } from 'src/shared/interfaces/pagination.interface';
-import { RestockPriorityItemDto } from './restock-priority-item.dto';
+import { PartResponseDto } from './part-response.dto';
 
-export class RestockPrioritiesResponseDto {
-  @ApiProperty({ type: [RestockPriorityItemDto] })
-  priorities: RestockPriorityItemDto[];
+export class PartsPageResponseDto {
+  @ApiProperty({ type: [PartResponseDto] })
+  data: PartResponseDto[];
 
   @ApiProperty()
   total: number;
@@ -21,11 +21,9 @@ export class RestockPrioritiesResponseDto {
 
   static fromPaginatedResult(
     result: IPaginatedResult<PartEntity>,
-  ): RestockPrioritiesResponseDto {
-    const dto = new RestockPrioritiesResponseDto();
-    dto.priorities = result.data.map((part) =>
-      RestockPriorityItemDto.fromEntity(part),
-    );
+  ): PartsPageResponseDto {
+    const dto = new PartsPageResponseDto();
+    dto.data = result.data.map((part) => PartResponseDto.fromEntity(part));
     dto.total = result.total;
     dto.page = result.page;
     dto.limit = result.limit;

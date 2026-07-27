@@ -171,7 +171,7 @@ describe('Restock flow (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
     const adminId = (
-      ownUsers.body as Array<{ id: string; email: string }>
+      ownUsers.body.data as Array<{ id: string; email: string }>
     ).find((user) => user.email === `admin-${suffix}@e2e.com`)?.id;
     expect(adminId).toBeDefined();
 
@@ -200,7 +200,7 @@ describe('Restock flow (e2e)', () => {
       .get('/users')
       .set('Authorization', `Bearer ${otherToken}`)
       .expect(200);
-    const usersFromOtherCompanyIds = usersFromOtherCompany.body.map(
+    const usersFromOtherCompanyIds = usersFromOtherCompany.body.data.map(
       (user: { id: string }) => user.id,
     );
     expect(usersFromOtherCompanyIds).not.toContain(adminId);
@@ -216,5 +216,69 @@ describe('Restock flow (e2e)', () => {
         .set('Authorization', `Bearer ${otherToken}`)
         .expect(404);
     }
+  });
+
+  it('paginates /parts and /restock/priorities', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: `admin-${suffix}@e2e.com`, password: 'senhaSegura123' })
+      .expect(200);
+    const token = login.body.accessToken as string;
+
+    const names = ['Pag Part A', 'Pag Part B', 'Pag Part C'];
+    for (const name of names) {
+      await request(app.getHttpServer())
+        .post('/parts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name,
+          category: 'pagination',
+          currentStock: 0,
+          minimumStock: 10,
+          averageDailySales: 1,
+          leadTimeDays: 1,
+          unitCost: 1,
+          criticalityLevel: 1,
+        })
+        .expect(201);
+    }
+
+    const firstPage = await request(app.getHttpServer())
+      .get('/parts?category=pagination&page=1&limit=2')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(firstPage.body.data).toHaveLength(2);
+    expect(firstPage.body.total).toBe(3);
+    expect(firstPage.body.page).toBe(1);
+    expect(firstPage.body.limit).toBe(2);
+    expect(firstPage.body.totalPages).toBe(2);
+
+    const secondPage = await request(app.getHttpServer())
+      .get('/parts?category=pagination&page=2&limit=2')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(secondPage.body.data).toHaveLength(1);
+
+    const firstPageIds = firstPage.body.data.map((p: { id: string }) => p.id);
+    const secondPageIds = secondPage.body.data.map((p: { id: string }) => p.id);
+    expect(firstPageIds).not.toEqual(expect.arrayContaining(secondPageIds));
+
+    const restockFirstPage = await request(app.getHttpServer())
+      .get('/restock/priorities?page=1&limit=2')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(restockFirstPage.body.priorities.length).toBeLessThanOrEqual(2);
+    expect(restockFirstPage.body.total).toBeGreaterThanOrEqual(3);
+    expect(restockFirstPage.body.limit).toBe(2);
+
+    await request(app.getHttpServer())
+      .get('/parts?page=0')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .get('/parts?limit=101')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
   });
 });
