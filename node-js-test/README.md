@@ -11,7 +11,7 @@ Além do CRUD de peças em si, esta implementação modela autenticação e mult
 ## Stack
 
 - **NestJS** (TypeScript) — [ADR 0002](docs/adr/0002-nestjs-as-http-framework.md)
-- **PostgreSQL + Prisma** — [ADR 0003](docs/adr/0003-postgresql-and-prisma-orm.md)
+- **PostgreSQL + Prisma** — [ADR 0003](docs/adr/0003-postgresql-and-prisma-orm.md), com índices para listagem paginada por tenant — [ADR 0014](docs/adr/0014-database-indexes-for-tenant-scoped-listing.md)
 - **JWT + guards de role** para autenticação/autorização — [ADR 0006](docs/adr/0006-jwt-authentication-and-role-guards.md)
 - **Redis**, via um `CacheAdapter` genérico, para cachear `GET /restock/priorities` por empresa — [ADR 0011](docs/adr/0011-generic-cache-adapter-for-restock-priorities.md)
 - **Paginação** em `/parts`, `/users` e `/restock/priorities` — [ADR 0012](docs/adr/0012-pagination-for-list-endpoints.md)
