@@ -16,3 +16,4 @@ Registro das decisões de arquitetura tomadas na implementação Node.js/NestJS 
 | [0010](0010-testing-strategy.md) | Estratégia de testes: unitários com mocks + e2e real |
 | [0011](0011-generic-cache-adapter-for-restock-priorities.md) | Adapter de cache genérico (Redis), usado para cachear `restock/priorities` |
 | [0012](0012-pagination-for-list-endpoints.md) | Paginação em `/parts`, `/users` e `/restock/priorities` |
+| [0013](0013-cicd-pipeline.md) | Pipeline CI/CD (GitHub Actions), deploy propositalmente sem conectar em nada |
