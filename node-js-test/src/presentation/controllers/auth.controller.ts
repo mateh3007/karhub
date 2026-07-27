@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { LoginUseCase } from 'src/application/usecases/auth/login.usecase';
 import { RegisterUseCase } from 'src/application/usecases/auth/register.usecase';
 import { CompanyResponseDto } from 'src/presentation/dtos/companies/company-response.dto';
@@ -10,6 +11,7 @@ import { RegisterResponseDto } from 'src/presentation/dtos/auth/register-respons
 import { UserResponseDto } from 'src/presentation/dtos/users/user-response.dto';
 
 @ApiTags('auth')
+@Throttle({ default: { limit: 20, ttl: 60000 } })
 @Controller('auth')
 export class AuthController {
   constructor(

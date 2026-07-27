@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { SignOptions } from 'jsonwebtoken';
 import { LoginUseCase } from './application/usecases/auth/login.usecase';
 import { RegisterUseCase } from './application/usecases/auth/register.usecase';
@@ -42,6 +44,13 @@ import { UsersController } from './presentation/controllers/users.controller';
   imports: [
     PrismaModule,
     RedisModule,
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: Number(process.env.THROTTLE_TTL_MS ?? 60000),
+        limit: Number(process.env.THROTTLE_LIMIT ?? 100),
+      },
+    ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: {
@@ -83,6 +92,7 @@ import { UsersController } from './presentation/controllers/users.controller';
     LoginUseCase,
     JwtAuthGuard,
     RolesGuard,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

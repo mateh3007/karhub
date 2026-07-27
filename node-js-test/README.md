@@ -17,6 +17,7 @@ Além do CRUD de peças em si, esta implementação modela autenticação e mult
 - **Paginação** em `/parts`, `/users` e `/restock/priorities` — [ADR 0012](docs/adr/0012-pagination-for-list-endpoints.md)
 - **Jest** para testes unitários e e2e — [ADR 0010](docs/adr/0010-testing-strategy.md)
 - **CI/CD via GitHub Actions**, com deploy propositalmente não conectado a nada — [ADR 0013](docs/adr/0013-cicd-pipeline.md)
+- **Rate limiting** (`@nestjs/throttler`), mais restritivo em `/auth/*` — [ADR 0015](docs/adr/0015-rate-limiting-with-nestjs-throttler.md)
 
 ## Arquitetura
 
@@ -55,6 +56,8 @@ npm run test:e2e  # e2e (sobe o AppModule real contra o Postgres do docker-compo
 ## Endpoints principais
 
 Todos os endpoints (exceto `/auth/*`) exigem `Authorization: Bearer <accessToken>`. `companyId` nunca é aceito no corpo da requisição — é sempre derivado do token de quem está autenticado, garantindo o isolamento entre empresas (ADR 0005).
+
+Todos os endpoints têm rate limit de 100 requisições/60s por IP; `/auth/register` e `/auth/login` são mais restritos (20/60s) contra brute-force — excedeu, `429 Too Many Requests` com header `Retry-After` (ADR 0015).
 
 | Método | Rota                   | Papel   | Descrição |
 |--------|------------------------|---------|-----------|

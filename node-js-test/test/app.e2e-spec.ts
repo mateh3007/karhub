@@ -281,4 +281,19 @@ describe('Restock flow (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(400);
   });
+
+  // Deliberately exhausts the /auth/login rate-limit bucket for this IP, so
+  // it must run last — any test after it that needs to log in would fail.
+  it('throttles repeated login attempts from the same IP', async () => {
+    const statusCodes: number[] = [];
+
+    for (let i = 0; i < 25; i++) {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: `admin-${suffix}@e2e.com`, password: 'senhaSegura123' });
+      statusCodes.push(response.status);
+    }
+
+    expect(statusCodes).toContain(429);
+  });
 });

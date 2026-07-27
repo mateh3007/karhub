@@ -18,3 +18,4 @@ Registro das decisões de arquitetura tomadas na implementação Node.js/NestJS 
 | [0012](0012-pagination-for-list-endpoints.md) | Paginação em `/parts`, `/users` e `/restock/priorities` |
 | [0013](0013-cicd-pipeline.md) | Pipeline CI/CD (GitHub Actions), deploy propositalmente sem conectar em nada |
 | [0014](0014-database-indexes-for-tenant-scoped-listing.md) | Índices de banco para listagem paginada por tenant (`companyId, name`) |
+| [0015](0015-rate-limiting-with-nestjs-throttler.md) | Rate limiting com `@nestjs/throttler`, mais restritivo em `/auth/*` |
