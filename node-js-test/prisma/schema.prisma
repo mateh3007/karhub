@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Company {
+  id            String    @id @default(uuid())
+  cnpj          String    @unique
+  corporateName String
+  tradeName     String
+  contactEmail  String    @unique
+  phone         String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  users         User[]
+  parts         Part[]
+
+  @@map("companies")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("users")
+}
+
+model Part {
+  id                String    @id @default(uuid())
+  name              String
+  category          String
+  currentStock      Int
+  minimumStock      Int
+  averageDailySales Float
+  leadTimeDays      Int
+  unitCost          Float
+  criticalityLevel  Int
+  companyId         String
+  company           Company   @relation(fields: [companyId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  @@index([companyId])
+  @@index([companyId, category])
+  @@map("parts")
+}
