@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-karhub-orange: #f25a29;
+  --color-karhub-orange-dark: #d94a1e;
+  --color-karhub-orange-light: #fcdbd0;
+  --color-karhub-navy: #1b3059;
+  --color-karhub-navy-light: #263a61;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-gray-50 text-karhub-navy antialiased;
+}
