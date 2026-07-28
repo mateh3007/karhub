@@ -10,6 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U karhub"]
       interval: 5s
@@ -82,8 +83,25 @@ services:
     depends_on:
       - node-backend
 
-  # Not implemented yet (see golang-test/README or the root README) — this
-  # service only builds/runs when explicitly requested:
+  # golang-test runs against its own database (karhub_go, created by
+  # deploy/postgres-init on a fresh volume) — independent from node-backend's
+  # `karhub` database and migrations, by design.
+  golang-migrate:
+    build:
+      context: ./golang-test
+    environment:
+      DATABASE_URL: postgres://karhub:karhub@postgres:5432/karhub_go?sslmode=disable
+      # Unused by the migrate binary itself, but config.Load() validates the
+      # full env (shared with cmd/api) — a placeholder here is enough.
+      JWT_SECRET: local-dev-secret-change-me
+    command: ["./migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - golang
+
+  # Not enabled by default — start it (alongside the rest of the stack) with:
   #   docker compose --profile golang up
   golang-backend:
     build:
@@ -92,13 +110,24 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgresql://karhub:karhub@postgres:5432/karhub?schema=public
+      DATABASE_URL: postgres://karhub:karhub@postgres:5432/karhub_go?sslmode=disable
+      JWT_SECRET: local-dev-secret-change-me
+      JWT_EXPIRES_IN: 1d
       REDIS_URL: redis://redis:6379
+      RESTOCK_PRIORITIES_CACHE_TTL_SECONDS: "30"
+      THROTTLE_TTL_MS: "60000"
+      THROTTLE_LIMIT: "100"
+      # Same reasoning as node-backend's CORS_ORIGIN: the browser (not this
+      # container) calls the API, so this must be the host-reachable origin.
+      CORS_ORIGIN: http://localhost:5173
+      PORT: "8080"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      golang-migrate:
+        condition: service_completed_successfully
     profiles:
       - golang
 
